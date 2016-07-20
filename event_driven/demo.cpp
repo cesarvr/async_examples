@@ -9,7 +9,7 @@
 #include <sys/epoll.h> //Event driven I/O.
 #include <fcntl.h> // manipulate file descriptor
 
-#define MAX_EVENTS     5
+#define MAX_EVENTS 10
 
 template <typename T>
 void checkError(T&& t, std::string message){
@@ -18,8 +18,8 @@ void checkError(T&& t, std::string message){
      perror( message.c_str() );
      exit(EXIT_FAILURE);
   }
-
 }
+
 
 template <typename T>
 void ShowEvent(T* events, int amountOfEvents){
@@ -39,8 +39,6 @@ void ShowEvent(T* events, int amountOfEvents){
     if(events[x].events & EPOLLIN)
       std::cout << "epoll -> EPOLLIN (ready for read)";
 
-
-
     std::cout << "   epoll_event.epoll_data.fd -> " << events[x].data.fd << std::endl;
   }
 }
@@ -48,118 +46,120 @@ void ShowEvent(T* events, int amountOfEvents){
 
 
 void SetNonBlocking(int file_descriptor){
-  int flags = fcntl(file_descriptor, F_GETFL);
+ int flags = fcntl(file_descriptor, F_GETFL);
 
-  if(!(flags & O_NONBLOCK)) {
+ if(!(flags & O_NONBLOCK)) {
 
-    puts("Non-Block flag Yes");
-    flags |= O_NONBLOCK;  /* Enable O_NONBLOCK bit */
-    fcntl(file_descriptor, F_SETFL, flags);
+   puts("Non-Block flag Yes");
+   flags |= O_NONBLOCK;  /* Enable O_NONBLOCK bit */
+   fcntl(file_descriptor, F_SETFL, flags);
 
-  }else
-    puts("Non-Block flag No");
-}
-
-const std::string resp = "HTTP/1.0 200 OK \n Date: Mon, 11 July 2016 23:59:59 GMT\n Content-Type: text/html  \n\n <html> <head> <title> Hi!! </title>  </head> <body> <h1>Hello World</h1> </body>  </html> \n";
-
-
-void Write(int file_descriptor){
-  write(file_descriptor, resp.c_str(), resp.size());
-}
-
-void Read(int file_descriptor) {
-  const unsigned int MAX_BUF_LENGTH = 1024;
-  char buffer[MAX_BUF_LENGTH];
-
-  checkError( read( file_descriptor, buffer, MAX_BUF_LENGTH ) , "can't read from this fd_socket.");
-
-  printf("\n \n reading data \n ============== \n %s \n ============== \n ", buffer);
+ }else
+   puts("Non-Block flag No");
 }
 
 
-template <typename T>
-void ReadAsync(T* events, int amountOfEvents){
-
-
-
-  for(int x=0; x<amountOfEvents; x++ ){
-    if(events[x].events & EPOLLIN) {
-
-      int file_descriptor = events[x].data.fd;
-      int read_size;
-
-      Read(file_descriptor);
-      Write(file_descriptor);
-
-    }
-  }
-
-}
-
-
-
-class EventIO {
-
+class HTTPServerIO {
 private:
-   int epollfd;
+  const std::string resp = "HTTP/1.0 200 OK \n Date: Mon, 11 July 2016 23:59:59 GMT\n Content-Type: text/html  \n\n <html> <head> <title> Hi!! </title>  </head> <body> <h1>Hello World</h1> </body>  </html> \n";
+
+public:
+   void Write(int file_descriptor){
+     write(file_descriptor, resp.c_str(), resp.size());
+   }
+
+   void Read(int file_descriptor) {
+     const unsigned int MAX_BUF_LENGTH = 1024;
+     char buffer[MAX_BUF_LENGTH];
+
+     checkError( read( file_descriptor, buffer, MAX_BUF_LENGTH ) , "can't read from this fd_socket.");
+
+     printf("\n \n reading data \n ==============\n %s \n==============\n", buffer);
+   }
+};
+
+class Connection {
+private:
+  int epollfd;
+  int socketfd;
+  HTTPServerIO serverIO;
 
 public:
 
-   EventIO(): epollfd{0} {
-     std::cout << "creating epoll ";
+  Connection( int epollFileDesc, int socketFileDesc ){
 
-     epollfd = epoll_create(5);
+    Subscribe(epollFileDesc, socketFileDesc, EPOLLIN);
 
-     if (epollfd == -1) {
-        perror("epoll_create1");
-        exit(EXIT_FAILURE);
-     }
-
-     std::cout << "  ...created " << std::endl;
-   }
-
-   void Unsuscribe(int fd){
-      //EPOLL_CTL_DEL
-
-      struct epoll_event ep_event;
-      ep_event.events = EPOLLIN & EPOLLOUT;
-      ep_event.data.fd = fd;
-
-      checkError(epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, &ep_event), "epoll_ctl: unsuscribe error!");
-
-      std::cout << "stop listening -> " << fd << std::endl;
-   }
-
-   void Subscribe(int fd) {
-     std::cout << "listen for I/O events: " << fd << std::endl;
-
-      struct epoll_event listen_in;
-      listen_in.events = EPOLLIN | EPOLLOUT;
-      listen_in.data.fd = fd;
-
-      checkError( epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &listen_in) ,
-                  "epoll_ctl: listen_sock" );
+    epollfd = epollFileDesc;
+    socketfd = socketFileDesc;
+  }
 
 
-      std::cout << "testing event listening" << std::endl;
+  void Subscribe(int epollFileDesc, int socketFileDesc, uint32_t event  ){
 
-      struct epoll_event events[MAX_EVENTS];
+    struct epoll_event listen;
+    listen.events = EPOLLIN;
+    listen.data.fd = socketFileDesc;
 
-      std::cout << "epoll wait..." << std::endl;
-      int amountOfEvents = 0;
+    checkError( epoll_ctl(epollFileDesc, EPOLL_CTL_ADD, socketFileDesc, &listen) ,
+                "Connection Class: Error listen socketfd" );
+  }
 
-      checkError( ( amountOfEvents = epoll_wait(epollfd, events, MAX_EVENTS, -1) ),
-                  "134: error in epoll_wait" );
+  void Unsubscribe(int epollFileDesc, struct epoll_event& listen ){
 
-      ShowEvent<epoll_event>(events, amountOfEvents);
+    checkError( epoll_ctl(epollFileDesc, EPOLL_CTL_DEL, listen.data.fd , &listen) ,
+                "Connection Class: Error listen socketfd" );
+  }
 
-      std::cout << "Read/Write Socket" << std::endl;
-      ReadAsync<epoll_event>(events, amountOfEvents);
-   }
+  int Accept() {
+
+   std::cout << "accepting connection" << std::endl;
+   struct sockaddr_in client;
+   int len = sizeof(struct sockaddr_in);
+
+   return accept(socketfd, (struct sockaddr *)&client, (socklen_t *) &len  );
+  }
+
+  void Listen() {
+    struct epoll_event events[MAX_EVENTS];
+    int amountOfEvents = 0;
+
+    std::cout << "epoll wait...";
+
+    checkError( ( amountOfEvents = epoll_wait(epollfd, events, MAX_EVENTS, -1) ),
+                "134: error in epoll_wait" );
+
+    ShowEvent(events, amountOfEvents);
+
+    for(int i=0; i<amountOfEvents; i++) {
+
+        if( events[i].events & EPOLLIN && events[i].data.fd == socketfd){
+          int client_socket_fd = Accept();
+
+          Subscribe(epollfd, client_socket_fd, EPOLLIN | EPOLLOUT);
+          std::cout << "accepted" << std::endl;
+        }
+
+        if(events[i].events & EPOLLIN && events[i].data.fd != socketfd) {
+          auto socketFD = events[i].data.fd;
+
+          SetNonBlocking(socketFD);
+          serverIO.Read(socketFD);
+          //serverIO.Write(socketFD);
+          std::cout << "Unsubscribe" << std::endl;
+          Unsubscribe(epollfd, events[i]);
+          close(socketFD);
+        }
+    }
+
+  }
 
 
 
 };
+
+
+
 
 
 
@@ -188,38 +188,31 @@ int init_socket() {
   checkError( bind(socket_fd,(struct sockaddr *)&server , sizeof(server)),
               "Error binding socket. " );
 
-  //Listen
-  listen(socket_fd , 3);
-
-  int len = sizeof(struct sockaddr_in);
-
   //Evented Socket hook.
   puts("Hooking evented_io");
 
-  EventIO eventIO;
+  int epollFileDesc;
+
+  checkError( ( epollFileDesc = epoll_create(20) ), "error epoll_create");
+
+
 
   puts("Listening in http://localhost:8888.");
 
+  //Listen
+  listen(socket_fd , 3);
 
   puts("Setting socket int Non-Blocking mode.");
 
+  SetNonBlocking(socket_fd);
 
-  while( (client_sock = accept(socket_fd, (struct sockaddr *)&client, (socklen_t *) &len )) )
+  Connection connection(epollFileDesc, socket_fd);
+
+  while( true )
   {
-    puts("connection accepted");
-
-    puts("Setting conection_socket int Non-Blocking mode.");
-    SetNonBlocking(client_sock);
-
-    puts("Listening for I/O events");
-    eventIO.Subscribe(client_sock);
-
-    std::cout << "bye bye" << std::endl;
-
-    close(client_sock);
+    connection.Listen();
   }
 
-  close(client_sock);
 
   return 0;
 }
