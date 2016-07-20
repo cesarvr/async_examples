@@ -136,7 +136,7 @@ public:
         if( events[i].events & EPOLLIN && events[i].data.fd == socketfd){
           int client_socket_fd = Accept();
 
-          Subscribe(epollfd, client_socket_fd, EPOLLIN | EPOLLOUT);
+          Subscribe(epollfd, client_socket_fd, EPOLLIN | EPOLLET);
           std::cout << "accepted" << std::endl;
         }
 
@@ -145,7 +145,7 @@ public:
 
           SetNonBlocking(socketFD);
           serverIO.Read(socketFD);
-          //serverIO.Write(socketFD);
+          serverIO.Write(socketFD);
           std::cout << "Unsubscribe" << std::endl;
           Unsubscribe(epollfd, events[i]);
           close(socketFD);
