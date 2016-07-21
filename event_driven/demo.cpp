@@ -21,6 +21,8 @@ void checkError(T&& t, std::string message){
 }
 
 
+/* This how node.js work behind de sce */
+
 template <typename T>
 void ShowEvent(T* events, int amountOfEvents){
 
@@ -43,22 +45,18 @@ void ShowEvent(T* events, int amountOfEvents){
   }
 }
 
-
-
+//Just tell the file descriptor in kernel to be non-blocking.
 void SetNonBlocking(int file_descriptor){
  int flags = fcntl(file_descriptor, F_GETFL);
 
- if(!(flags & O_NONBLOCK)) {
-
-   puts("Non-Block flag Yes");
+// We set the flag if it wasn't set before.
+ if(!(flags & O_NONBLOCK))
    flags |= O_NONBLOCK;  /* Enable O_NONBLOCK bit */
    fcntl(file_descriptor, F_SETFL, flags);
-
- }else
-   puts("Non-Block flag No");
 }
 
 
+// Our Simple Server I/O.
 class HTTPServerIO {
 private:
   const std::string resp = "HTTP/1.0 200 OK \n Date: Mon, 11 July 2016 23:59:59 GMT\n Content-Type: text/html  \n\n <html> <head> <title> Hi!! </title>  </head> <body> <h1>Hello World</h1> </body>  </html> \n";
@@ -120,6 +118,8 @@ public:
    return accept(socketfd, (struct sockaddr *)&client, (socklen_t *) &len  );
   }
 
+
+  // Taking advantage of the loop.
   void Listen() {
     struct epoll_event events[MAX_EVENTS];
     int amountOfEvents = 0;
@@ -133,7 +133,7 @@ public:
 
     for(int i=0; i<amountOfEvents; i++) {
 
-        if( events[i].events & EPOLLIN && events[i].data.fd == socketfd){
+        if( events[i].events & EPOLLIN && events[i].data.fd == socketfd) {
           int client_socket_fd = Accept();
 
           Subscribe(epollfd, client_socket_fd, EPOLLIN | EPOLLET);
@@ -204,7 +204,7 @@ int init_socket() {
 
   puts("Setting socket int Non-Blocking mode.");
 
-  SetNonBlocking(socket_fd);
+  SetNonBlocking(socket_fd); //big difference
 
   Connection connection(epollFileDesc, socket_fd);
 
@@ -212,8 +212,7 @@ int init_socket() {
   {
     connection.Listen();
   }
-
-
+  
   return 0;
 }
 
