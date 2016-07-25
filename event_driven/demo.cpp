@@ -28,7 +28,6 @@ void ShowEvent(T* events, int amountOfEvents){
 
   for(int x=0; x<amountOfEvents; x++ ){
 
-
     if(events[x].events & EPOLLOUT)
       std::cout << "epoll -> EPOLLOUT (ready for write)";
 
@@ -212,7 +211,7 @@ int init_socket() {
   {
     connection.Listen();
   }
-  
+
   return 0;
 }
 
