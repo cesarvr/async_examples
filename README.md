@@ -7,12 +7,15 @@ I have made various example showcasing deferents forms of socket I/O handling, b
 
 - to run the demos:
 
-> ./single_thread_blocking/demo.o
-> ./multi_thread_blocking/worker_demo.o
-> ./event_driven/evented_demo.o
-
+```sh
+ ./single_thread_blocking/demo.o
+ ./multi_thread_blocking/worker_demo.o
+ ./event_driven/evented_demo.o
+```
 
 - once they are running, you can run this scripts to see how it works:
 
-> ./test/simple_curl.sh
-> ./test/concurrent_curl.sh
+```sh
+ ./test/simple_curl.sh
+ ./test/concurrent_curl.sh
+```
