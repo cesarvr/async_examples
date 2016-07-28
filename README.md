@@ -1,7 +1,18 @@
-## Demos 
+## Demos
 Various examples showcasing the different approaches to concurrency.
 
-## Blocking Example
-Showcase a simple example of an server interative simple application, it waits for clients connection, handle the client I/O and close the socket. Problem with this approach is tha only one connection is handle at time. 
+## Examples
+I have made various example showcasing deferents forms of socket I/O handling, blocking, multithread and concurrent,
+, to run the examples you only need Linux and clang. In root folder you can find compile.sh to compile the sources.
+
+- to run the demos:
+
+> ./single_thread_blocking/demo.o
+> ./multi_thread_blocking/worker_demo.o
+> ./event_driven/evented_demo.o
 
 
+- once they are running, you can run this scripts to see how it works:
+
+> ./test/simple_curl.sh
+> ./test/concurrent_curl.sh
